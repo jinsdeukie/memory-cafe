@@ -1,0 +1,380 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Memory Cafe</title>
+
+<style>
+  :root{
+    --canvas-w: 1050px;
+  }
+  
+/* Whole site fade + rise on load */
+body{
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE */
+  user-select: none;
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms cubic-bezier(.2,.8,.2,1);
+}
+
+body.loaded{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce){
+  body{
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+
+html, body { height: 100%; }
+
+body{
+  margin: 0;
+  font-family: system-ui, Arial, sans-serif;
+  background: #efe9e2;
+  overflow: hidden;
+}
+
+#stage{
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#canvas{
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--canvas-w);
+  height: 100%;
+}
+
+#bg{
+  position: absolute;
+  inset: 0;
+  background-image: url("https://i.imgur.com/mmIUtxQ.png");
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.topbar{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 35px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.top-left, .top-right{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: rgba(0,0,0,0.85);
+  user-select: none;
+  padding: clamp(16px, 4vw, 80px);
+}
+
+.top-left{ justify-self: start; }
+.top-right{ justify-self: end; }
+
+.title-img{
+  justify-self: center;
+  width: min(460px, 60vw);
+  height: auto;
+  user-select: none;
+  display: block;
+  padding-top: 20px;
+}
+
+.item{
+  position: absolute;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease;
+  z-index: 2;
+}
+
+.item:hover{
+  background: rgba(255,255,255,0.2);
+}
+
+.item:focus,
+.item:focus-visible{
+  outline: none;
+}
+
+/* Positions */
+.food{ left: 44%; top: 80%; width: 100px; height: 70px; }
+.pichu{ left: 84%; top: 52%; width: 76px; height: 70px; }
+.heels{ left: 79%; top: 77%; width: 70px; height: 70px; }
+.dice{ left: 79%; top: 66%; width: 50px; height: 70px; }
+.controller{ left: 84%; top: 66%; width: 76px; height: 70px; }
+.pumpkin{ left: 84%; top: 42%; width: 76px; height: 70px; }
+.cocktail{ left: 38%; top: 71%; width: 80px; height: 70px; }
+.coffee{ left: 52%; top: 69%; width: 80px; height: 70px; }
+.headphones{ left: 34%; top: 54%; width: 110px; height: 70px; }
+.plane{ left: 10%; top: 45%; width: 80px; height: 70px; }
+.phone{ left: 58%; top: 76%; width: 80px; height: 70px; }
+.boardgames{ left: 86%; top: 77%; width: 80px; height: 70px; }
+.flowers{ left: 46%; top: 57%; width: 90px; height: 70px; }
+
+/* ========================= */
+/* MODAL FADE + RISE EFFECT */
+/* ========================= */
+
+#modalBackdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 16px;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+
+#modal{
+  background: none;
+  border: none;
+  padding: 16px;
+  width: min(520px, 92vw);
+  position: relative;
+
+  opacity: 0;
+  transform: translateY(20px);
+  transition: 
+    opacity 300ms ease,
+    transform 300ms cubic-bezier(.2,.8,.2,1);
+}
+
+#modalBackdrop.active{
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#modalBackdrop.active #modal{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========================= */
+
+#modalContent img{
+  width: min(450px, 80vw);
+  max-height: 70vh;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.close-btn{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  line-height: 1;
+  color: #eee;
+}
+
+.close-btn:hover{
+  opacity: 1; 
+  transition: 0.5s ease;
+}
+
+.title-button{
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.title-button:hover .title-img{
+  opacity: 0.8;
+  transition: 0.3s ease;
+}
+  
+  /* Bottom-left ambience button */
+.ambience-btn{
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  margin: 30px;
+
+  background: rgba(0,0,0,0.4);
+  color: white;
+  border: none;
+
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+
+  font-size: 13px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: 0.3s ease;
+  z-index: 20;
+}
+
+.ambience-btn:hover{
+  background: rgba(0,0,0,0.3);
+}
+
+.ambience-btn:focus{
+  outline: none;
+}
+</style>
+</head>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/7JYNEKg.png">
+
+<body>
+<div id="stage">
+<div class="topbar">
+<div class="top-left">Gab + Jianine
+  </div>
+
+<button type="button" class="title-button" data-kind="title">
+<img class="title-img" src="https://i.imgur.com/H7iUM4v.png" alt="Title">
+</button>
+
+<div class="top-right">04.08.19</div>
+</div>
+  
+  <!-- Ambience Audio -->
+<audio id="ambience" src="https://audio.jukehost.co.uk/9JjllPhr1CNZ5qhwhf6XRf2xJ9ajAFIz" loop preload="auto"></audio>
+
+<button type="button" id="ambienceToggle" class="ambience-btn">
+  ▶
+</button>
+
+<div id="canvas">
+<div id="bg" aria-hidden="true"></div>
+
+<button class="item food" data-kind="food"></button>
+<button class="item pichu" data-kind="pichu"></button>
+<button class="item heels" data-kind="heels"></button>
+<button class="item dice" data-kind="dice"></button>
+<button class="item controller" data-kind="controller"></button>
+<button class="item pumpkin" data-kind="pumpkin"></button>
+<button class="item cocktail" data-kind="cocktail"></button>
+<button class="item coffee" data-kind="coffee"></button>
+<button class="item headphones" data-kind="headphones"></button>
+<button class="item plane" data-kind="plane"></button>
+<button class="item phone" data-kind="phone"></button>
+<button class="item boardgames" data-kind="boardgames"></button>
+<button class="item flowers" data-kind="flowers"></button>
+</div>
+</div>
+
+<div id="modalBackdrop">
+<div id="modal">
+<button class="close-btn" type="button" onclick="closeModal()">✕</button>
+<div id="modalContent"></div>
+</div>
+</div>
+
+<script>
+  const ambience = document.getElementById("ambience");
+const ambienceBtn = document.getElementById("ambienceToggle");
+
+let isPlaying = false;
+
+ambienceBtn.addEventListener("click", () => {
+  if(!isPlaying){
+    ambience.volume = 0.4;  // adjust volume
+    ambience.play();
+    ambienceBtn.textContent = "❚❚"; // pause icon
+    isPlaying = true;
+  } else {
+    ambience.pause();
+    ambienceBtn.textContent = "▶";
+    isPlaying = false;
+  }
+});
+  
+window.addEventListener("load", () => {
+  document.body.classList.add("loaded");
+});
+
+const gacha = {
+  title:["https://i.imgur.com/9tXH38W.png"],
+  food:["https://i.imgur.com/AFJzxQd.png"],
+  pichu:["https://i.imgur.com/2k933xB.png"],
+  heels:["https://i.imgur.com/jbwS4Pc.png"],
+  dice:["https://i.imgur.com/aXyleN5.png"],
+  controller:["https://i.imgur.com/z8e5J0R.png"],
+  pumpkin:["https://i.imgur.com/jwrcsTk.png"],
+  cocktail:["https://i.imgur.com/5N5TRMg.png"],
+  coffee:["https://i.imgur.com/p85RvA1.png"],
+  headphones:["https://i.imgur.com/uD7wCWG.png"],
+  plane:["https://i.imgur.com/43UwBpc.png"],
+  phone:["https://i.imgur.com/Y16iXt5.png"],
+  boardgames:["https://i.imgur.com/UD3Vjex.png"],
+  flowers:["https://i.imgur.com/uQh8Y01.png"]
+};
+
+const backdrop=document.getElementById("modalBackdrop");
+const contentEl=document.getElementById("modalContent");
+
+function openModal(imageUrl){
+  contentEl.innerHTML=`<img src="${imageUrl}" alt="">`;
+  backdrop.classList.add("active");
+}
+
+function closeModal(){
+  backdrop.classList.remove("active");
+  setTimeout(()=>{contentEl.innerHTML="";},300);
+}
+
+backdrop.addEventListener("click",(e)=>{
+  if(e.target===backdrop) closeModal();
+});
+
+document.querySelectorAll(".item, .title-button").forEach((btn)=>{
+  btn.addEventListener("click",()=>{
+    const kind=btn.dataset.kind;
+    const pool=gacha[kind]||[];
+    if(!pool.length) return;
+    const randomUrl=pool[Math.floor(Math.random()*pool.length)];
+    openModal(randomUrl);
+  });
+});
+</script>
+
+</body>
+</html>
